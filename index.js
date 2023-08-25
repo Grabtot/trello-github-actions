@@ -27,19 +27,23 @@ try {
 function createCardWhenIssueOpen(apiKey, apiToken, boardId) {
   const listId = process.env['TRELLO_LIST_ID'];
   const issue = github.context.payload.issue;
-  console.dir("issue: ", issue);
+  console.dir("issue: ");
+  console.dir(issue);
   const number = issue.number;
   const title = issue.title;
   const description = issue.body;
   const url = issue.html_url;
   const assignees = issue.assignees.map(assignee => assignee.login);
-  console.dir("github assignees: ", assignees);
+  console.dir("github assignees: ");
+  console.dir(assignees);
   const issueLabelNames = issue.labels.map(label => label.name);
-  console.dir("github lables: ", issueLabelNames);
+  console.dir("github lables:")
+  console.dir(issueLabelNames);
 
   getLabelsOfBoard(apiKey, apiToken, boardId).then(function (response) {
     const trelloLabels = response;
-    console.dir("trello lables: ", trelloLabels);
+    console.dir("trello lables: ");
+    console.dir(trelloLabels);
     const trelloLabelIds = [];
 
     issueLabelNames.forEach(function (issueLabelName) {
@@ -52,7 +56,8 @@ function createCardWhenIssueOpen(apiKey, apiToken, boardId) {
 
     getMembersOfBoard(apiKey, apiToken, boardId).then(function (response) {
       const members = response;
-      console.dir("trello  members: ", members);
+      console.dir("trello  members: ");
+      console.dir(members);
       const memberIds = [];
       assignees.forEach(function (assignee) {
         members.forEach(function (member) {
