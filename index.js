@@ -1,12 +1,12 @@
-import { getInput, setFailed } from '@actions/core';
-import { context } from '@actions/github';
-import request from 'request-promise-native';
+const core = require('@actions/core');
+const github = require('@actions/github');
+const request = require('request-promise-native');
 
 try {
   const apiKey = process.env['TRELLO_API_KEY'];
   const apiToken = process.env['TRELLO_API_TOKEN'];
   const boardId = process.env['TRELLO_BOARD_ID'];
-  const action = getInput('trello-action');
+  const action = core.getInput('trello-action');
 
   switch (action) {
     case 'create_card_when_issue_opened':
@@ -21,12 +21,13 @@ try {
 
   }
 } catch (error) {
-  setFailed(error.message);
+  core.setFailed(error.message);
 }
 
 function createCardWhenIssueOpen(apiKey, apiToken, boardId) {
   const listId = process.env['TRELLO_LIST_ID'];
-  const issue = context.payload.issue
+  const issue = github.context.payload.issue;
+  console.dir("issue: ", issue);
   const number = issue.number;
   const title = issue.title;
   const description = issue.body;
@@ -74,7 +75,7 @@ function createCardWhenIssueOpen(apiKey, apiToken, boardId) {
 function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
   const departureListId = process.env['TRELLO_DEPARTURE_LIST_ID'];
   const destinationListId = process.env['TRELLO_DESTINATION_LIST_ID'];
-  const pullRequest = context.payload.pull_request
+  const pullRequest = github.context.payload.pull_request
   const issue_number = pullRequest.body.match(/#[0-9]+/)[0].slice(1);
   const url = pullRequest.html_url;
   const reviewers = pullRequest.requested_reviewers.map(reviewer => reviewer.login);
@@ -111,7 +112,7 @@ function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
           addUrlSourceToCard(apiKey, apiToken, cardId, url);
         });
       } else {
-        setFailed('Card not found.');
+        core.setFailed('Card not found.');
       }
     });
   });
@@ -120,7 +121,7 @@ function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
 function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
   const departureListId = process.env['TRELLO_DEPARTURE_LIST_ID'];
   const destinationListId = process.env['TRELLO_DESTINATION_LIST_ID'];
-  const pullRequest = context.payload.pull_request
+  const pullRequest = github.context.payload.pull_request
   const issue_number = pullRequest.body.match(/#[0-9]+/)[0].slice(1);
   const url = pullRequest.html_url;
   const reviewers = pullRequest.requested_reviewers.map(reviewer => reviewer.login);
@@ -155,7 +156,7 @@ function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
       if (cardId) {
         putCard(apiKey, apiToken, cardId, cardParams);
       } else {
-        setFailed('Card not found.');
+        core.setFailed('Card not found.');
       }
     });
   });
