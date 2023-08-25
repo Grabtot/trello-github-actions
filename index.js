@@ -55,7 +55,7 @@ function createCardWhenIssueOpen(apiKey, apiToken, boardId) {
       const memberIds = [];
       assignees.forEach(function (assignee) {
         members.forEach(function (member) {
-          if (member.username == assignee) {
+          if (member.username.toLowerCase() == assignee.toLowerCase()) {
             memberIds.push(member.id)
           }
         });
