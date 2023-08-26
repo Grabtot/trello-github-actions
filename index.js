@@ -18,6 +18,9 @@ try {
     case 'move_card_when_pull_request_closed':
       moveCardWhenPullRequestClose(apiKey, apiToken, boardId);
       break;
+    case 'move_card_when_issue_closed':
+      moveCardWhenIssueClosed(apiKey, apiToken);
+      break;
 
   }
 } catch (error) {
@@ -27,23 +30,15 @@ try {
 function createCardWhenIssueOpen(apiKey, apiToken, boardId) {
   const listId = process.env['TRELLO_LIST_ID'];
   const issue = github.context.payload.issue;
-  console.dir("issue: ");
-  console.dir(issue);
   const number = issue.number;
   const title = issue.title;
   const description = issue.body;
   const url = issue.html_url;
   const assignees = issue.assignees.map(assignee => assignee.login);
-  console.dir("github assignees: ");
-  console.dir(assignees);
   const issueLabelNames = issue.labels.map(label => label.name);
-  console.dir("github lables:")
-  console.dir(issueLabelNames);
 
   getLabelsOfBoard(apiKey, apiToken, boardId).then(function (response) {
     const trelloLabels = response;
-    console.dir("trello lables: ");
-    console.dir(trelloLabels);
     const trelloLabelIds = [];
 
     issueLabelNames.forEach(function (issueLabelName) {
@@ -56,8 +51,6 @@ function createCardWhenIssueOpen(apiKey, apiToken, boardId) {
 
     getMembersOfBoard(apiKey, apiToken, boardId).then(function (response) {
       const members = response;
-      console.dir("trello  members: ");
-      console.dir(members);
       const memberIds = [];
       assignees.forEach(function (assignee) {
         members.forEach(function (member) {
@@ -76,6 +69,35 @@ function createCardWhenIssueOpen(apiKey, apiToken, boardId) {
     });
   });
 }
+function moveCardWhenIssueClosed(apiKey, apiToken) {
+  const departureListId = process.env['TRELLO_DEPARTURE_LIST_ID'];
+  const destinationListId = process.env['TRELLO_DESTINATION_LIST_ID'];
+  const issue = github.context.payload.issue;
+  const issue_number = issue.number;
+
+  getCardsOfList(apiKey, apiToken, departureListId).then(function (responce) {
+    const cards = responce;
+    let cardId;
+
+    cards.some(function (card) {
+      const card_issue_number = card.name.match(/#[0-9]+/)[0].slice(1);
+      if (card_issue_number == issue_number) {
+        cardId = card.id;
+        return true;
+      }
+    });
+
+    const cardParams = {
+      destinationListId: destinationListId
+    };
+
+    if (cardId) {
+      putCard(apiKey, apiToken, cardId, cardParams);
+    } else {
+      core.setFailed('Card not found');
+    }
+  })
+}
 
 function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
   const departureListId = process.env['TRELLO_DEPARTURE_LIST_ID'];
@@ -90,7 +112,7 @@ function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
     const additionalMemberIds = [];
     reviewers.forEach(function (reviewer) {
       members.forEach(function (member) {
-        if (member.username == reviewer) {
+        if (member.username.toLowerCase() == reviewer.toLowerCase()) {
           additionalMemberIds.push(member.id);
         }
       });
@@ -148,7 +170,7 @@ function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
       let existingMemberIds = [];
       cards.some(function (card) {
         const card_issue_number = card.name.match(/#[0-9]+/)[0].slice(1);
-        if (card_issue_number == issue_number) {
+        if (card_issue_number.toLowerCase() == issue_number.toLowerCase()) {
           cardId = card.id;
           existingMemberIds = card.idMembers;
           return true;
