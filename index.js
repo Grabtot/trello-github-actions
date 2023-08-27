@@ -73,6 +73,7 @@ function moveCardWhenIssueClosed(apiKey, apiToken) {
   const departureListId = process.env['TRELLO_DEPARTURE_LIST_ID'];
   const destinationListId = process.env['TRELLO_DESTINATION_LIST_ID'];
   const issue = github.context.payload.issue;
+  console.debug(issue_number)
   const issue_number = issue.number;
 
   getCardsOfList(apiKey, apiToken, departureListId).then(function (responce) {
@@ -103,6 +104,7 @@ function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
   const departureListId = process.env['TRELLO_DEPARTURE_LIST_ID'];
   const destinationListId = process.env['TRELLO_DESTINATION_LIST_ID'];
   const pullRequest = github.context.payload.pull_request
+  console.debug(pullRequest)
   const issue_number = pullRequest.body.match(/#[0-9]+/)[0].slice(1);
   const url = pullRequest.html_url;
   const reviewers = pullRequest.requested_reviewers.map(reviewer => reviewer.login);
@@ -149,8 +151,8 @@ function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
   const departureListId = process.env['TRELLO_DEPARTURE_LIST_ID'];
   const destinationListId = process.env['TRELLO_DESTINATION_LIST_ID'];
   const pullRequest = github.context.payload.pull_request
+  console.debug(pullRequest)
   const issue_number = pullRequest.body.match(/#[0-9]+/)[0].slice(1);
-  const url = pullRequest.html_url;
   const reviewers = pullRequest.requested_reviewers.map(reviewer => reviewer.login);
 
   getMembersOfBoard(apiKey, apiToken, boardId).then(function (response) {
