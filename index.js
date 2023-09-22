@@ -149,7 +149,7 @@ function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
 }
 
 function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
-  const departureListId = process.env['TRELLO_TESTING_LIST_ID'];
+  const departureListId = process.env['TRELLO_DEBUGING_LIST_ID'];
   const destinationListId = process.env['TRELLO_DONE_LIST_ID'];
   const pullRequest = github.context.payload.pull_request
   console.debug(pullRequest)
