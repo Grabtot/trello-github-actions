@@ -18,9 +18,9 @@ try {
     case 'move_card_when_pull_request_closed':
       moveCardWhenPullRequestClose(apiKey, apiToken, boardId);
       break;
-    case 'move_card_when_issue_closed':
-      moveCardWhenIssueClosed(apiKey, apiToken);
-      break;
+    // case 'move_card_when_issue_closed':
+    //   moveCardWhenIssueClosed(apiKey, apiToken);
+    //   break;
 
   }
 } catch (error) {
@@ -28,7 +28,7 @@ try {
 }
 
 function createCardWhenIssueOpen(apiKey, apiToken, boardId) {
-  const listId = process.env['TRELLO_LIST_ID'];
+  const listId = process.env['TRELLO_TODO_LIST_ID'];
   const issue = github.context.payload.issue;
   const number = issue.number;
   const title = issue.title;
@@ -69,6 +69,7 @@ function createCardWhenIssueOpen(apiKey, apiToken, boardId) {
     });
   });
 }
+
 function moveCardWhenIssueClosed(apiKey, apiToken) {
   const departureListId = process.env['TRELLO_DEPARTURE_LIST_ID'];
   const destinationListId = process.env['TRELLO_DESTINATION_LIST_ID'];
@@ -102,11 +103,9 @@ function moveCardWhenIssueClosed(apiKey, apiToken) {
 }
 
 function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
-  const departureListId = process.env['TRELLO_DEPARTURE_LIST_ID'];
-  const destinationListId = process.env['TRELLO_DESTINATION_LIST_ID'];
+  const departureListId = process.env['TRELLO_IN_PROGRESS_LIST_ID'];
+  const destinationListId = process.env['TRELLO_DEBUGING_LIST_ID'];
   const pullRequest = github.context.payload.pull_request;
-  console.debug("pull request: ")
-  console.debug(pullRequest)
   const issue_number = pullRequest.body.match(/#[0-9]+/)[0].slice(1);
   const url = pullRequest.html_url;
   const reviewers = pullRequest.requested_reviewers.map(reviewer => reviewer.login);
@@ -150,8 +149,8 @@ function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
 }
 
 function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
-  const departureListId = process.env['TRELLO_DEPARTURE_LIST_ID'];
-  const destinationListId = process.env['TRELLO_DESTINATION_LIST_ID'];
+  const departureListId = process.env['TRELLO_TESTING_LIST_ID'];
+  const destinationListId = process.env['TRELLO_DONE_LIST_ID'];
   const pullRequest = github.context.payload.pull_request
   console.debug(pullRequest)
   const issue_number = pullRequest.body.match(/#[0-9]+/)[0].slice(1);
