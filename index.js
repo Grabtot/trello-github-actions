@@ -106,9 +106,14 @@ function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
   const departureListId = process.env['TRELLO_IN_PROGRESS_LIST_ID'];
   const destinationListId = process.env['TRELLO_DEBUGING_LIST_ID'];
   const pullRequest = github.context.payload.pull_request;
-  const issue_number = pullRequest.body.match(/#[0-9]+/)[0].slice(1);
+  const issue_numbers = pullRequest.body.match(/#[0-9]+/g);
   const url = pullRequest.html_url;
   const reviewers = pullRequest.requested_reviewers.map(reviewer => reviewer.login);
+
+  if (issue_numbers.length === 0) {
+    core.setOutput('No issue numbers found in pull request description.');
+    return;
+  }
 
   getMembersOfBoard(apiKey, apiToken, boardId).then(function (response) {
     const members = response;
@@ -123,38 +128,44 @@ function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
 
     getCardsOfList(apiKey, apiToken, departureListId).then(function (response) {
       const cards = response;
-      let cardId;
       let existingMemberIds = [];
-      cards.some(function (card) {
-        const card_issue_number = card.name.match(/#[0-9]+/)[0].slice(1);
-        if (card_issue_number == issue_number) {
-          cardId = card.id;
-          existingMemberIds = card.idMembers;
-          return true;
-        }
-      });
-      const cardParams = {
-        destinationListId: destinationListId, memberIds: existingMemberIds.concat(additionalMemberIds).join()
-      }
 
-      if (cardId) {
-        putCard(apiKey, apiToken, cardId, cardParams).then(function (response) {
-          addUrlSourceToCard(apiKey, apiToken, cardId, url);
+      issue_numbers.forEach(function (issue_number) {
+        cards.some(function (card) {
+          const card_issue_number = card.name.match(/#[0-9]+/)[0].slice(1);
+          if (card_issue_number == issue_number) {
+            const cardId = card.id;
+            existingMemberIds = card.idMembers;
+
+            const cardParams = {
+              destinationListId: destinationListId,
+              memberIds: existingMemberIds.concat(additionalMemberIds).join()
+            }
+
+            putCard(apiKey, apiToken, cardId, cardParams).then(function (response) {
+              addUrlSourceToCard(apiKey, apiToken, cardId, url);
+            });
+
+            return true;
+          }
         });
-      } else {
-        core.setFailed('Card not found.');
-      }
+      });
     });
   });
 }
 
+
 function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
   const departureListId = process.env['TRELLO_DEBUGING_LIST_ID'];
   const destinationListId = process.env['TRELLO_DONE_LIST_ID'];
-  const pullRequest = github.context.payload.pull_request
-  console.debug(pullRequest)
-  const issue_number = pullRequest.body.match(/#[0-9]+/)[0].slice(1);
+  const pullRequest = github.context.payload.pull_request;
+  const issue_numbers = pullRequest.body.match(/#[0-9]+/g);
   const reviewers = pullRequest.requested_reviewers.map(reviewer => reviewer.login);
+
+  if (issue_numbers.length === 0) {
+    core.setOutput('No issue numbers found in pull request description.');
+    return;
+  }
 
   getMembersOfBoard(apiKey, apiToken, boardId).then(function (response) {
     const members = response;
@@ -169,28 +180,30 @@ function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
 
     getCardsOfList(apiKey, apiToken, departureListId).then(function (response) {
       const cards = response;
-      let cardId;
       let existingMemberIds = [];
-      cards.some(function (card) {
-        const card_issue_number = card.name.match(/#[0-9]+/)[0].slice(1);
-        if (card_issue_number.toLowerCase() == issue_number.toLowerCase()) {
-          cardId = card.id;
-          existingMemberIds = card.idMembers;
-          return true;
-        }
-      });
-      const cardParams = {
-        destinationListId: destinationListId, memberIds: existingMemberIds.concat(additionalMemberIds).join()
-      }
 
-      if (cardId) {
-        putCard(apiKey, apiToken, cardId, cardParams);
-      } else {
-        core.setFailed('Card not found.');
-      }
+      issue_numbers.forEach(function (issue_number) {
+        cards.some(function (card) {
+          const card_issue_number = card.name.match(/#[0-9]+/)[0].slice(1);
+          if (card_issue_number.toLowerCase() == issue_number.toLowerCase()) {
+            const cardId = card.id;
+            existingMemberIds = card.idMembers;
+
+            const cardParams = {
+              destinationListId: destinationListId,
+              memberIds: existingMemberIds.concat(additionalMemberIds).join()
+            }
+
+            putCard(apiKey, apiToken, cardId, cardParams);
+
+            return true;
+          }
+        });
+      });
     });
   });
 }
+
 
 function getLabelsOfBoard(apiKey, apiToken, boardId) {
   return new Promise(function (resolve, reject) {
