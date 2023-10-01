@@ -1,5 +1,4 @@
 name: 'Link GitHub Issue and Pull Request with Trello Card'
-
 description: 'You can link GitHub issues and pull request with Trello card.'
 
 inputs:
@@ -7,6 +6,26 @@ inputs:
     description: 'Action to do'
     required: true
     
-runs:
-  using: 'node12'
-  main: 'index.js'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '12'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run your script
+      run: node index.js
+      env:
+        TRELLO_API_KEY: ${{ secrets.TRELLO_API_KEY }}
+        TRELLO_API_TOKEN: ${{ secrets.TRELLO_API_TOKEN }}
+        TRELLO_BOARD_ID: ${{ secrets.TRELLO_BOARD_ID }}
+        TRELLO_TODO_LIST_ID: ${{ secrets.TRELLO_TODO_LIST_ID }}
