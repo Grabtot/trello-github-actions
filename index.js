@@ -110,7 +110,7 @@ function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
   const url = pullRequest.html_url;
   const reviewers = pullRequest.requested_reviewers.map(reviewer => reviewer.login);
 
-  if (issue_numbers.length === 0) {
+  if (issue_numbers === null || issue_numbers.length === 0) {
     core.setOutput('No issue numbers found in pull request description.');
     return;
   }
@@ -162,7 +162,7 @@ function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
   const issue_numbers = pullRequest.body.match(/#[0-9]+/g);
   const reviewers = pullRequest.requested_reviewers.map(reviewer => reviewer.login);
 
-  if (issue_numbers.length === 0) {
+  if (issue_numbers === null || issue_numbers.length === 0) {
     core.setOutput('No issue numbers found in pull request description.');
     return;
   }
