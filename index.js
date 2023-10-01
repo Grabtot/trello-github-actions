@@ -186,8 +186,9 @@ function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
 }
 
 // Function to add yourself as a member to an existing card when assigned on GitHub
-function addMemberToCardWhenAssigned(apiKey, apiToken, boardId) {
+async function addMemberToCardWhenAssigned(apiKey, apiToken, boardId) {
   const issue = github.context.payload.issue;
+  const issueNumber = issue.number;
   const assignees = issue.assignees.map(assignee => assignee.login);
 
   // Define the Trello lists to search in order
@@ -198,65 +199,36 @@ function addMemberToCardWhenAssigned(apiKey, apiToken, boardId) {
     // Add more lists as needed
   ];
 
-  // Function to recursively search for the card in Trello lists
-  function searchCardInLists(listIndex) {
-    if (listIndex >= trelloListsToSearch.length) {
-      // Card not found in any list
-      core.setFailed('Card not found in any Trello list.');
-      return;
-    }
+  const card = getCardOfLists(apiKey, apiToken, trelloListsToSearch, issueNumber);
+  const members = await getMembersOfBoard(apiKey, apiToken, boardId);
 
-    getMembersOfBoard(apiKey, apiToken, boardId).then(function (response) {
-      const members = response;
-      const additionalMemberIds = [];
-      reviewers.forEach(function (reviewer) {
-        members.forEach(function (member) {
-          if (member.username.toLowerCase() == reviewer.toLowerCase()) {
-            additionalMemberIds.push(member.id);
-          }
-        });
-      });
+  const existingMemberIds = card.idMembers;
+  const newMemberIds = [];
 
-      const listId = trelloListsToSearch[listIndex];
+  assignees.forEach(assigned => {
+    members.forEach(member => {
+      if (member.username.toLowerCase() == assigned.toLowerCase()
+        && !card.idMembers.includes(member.id)) {
+        newMemberIds.push(member.id);
+      }
+    });
+  });
 
-      getCardsOfList(apiKey, apiToken, listId).then(function (response) {
-        const cards = response;
-        const issue_number = issue.number;
-
-        cards.some(function (card) {
-          const card_issue_number = card.name.match(/#[0-9]+/);
-          if (card_issue_number && card_issue_number[0].slice(1) == issue_number) {
-            const cardId = card.id;
-
-            // Get existing members of the card
-            const existingMemberIds = card.idMembers || [];
-
-            // Add your member ID to the existing members
-            const memberIds = existingMemberIds.concat([yourMemberId]); // Replace with your Trello member ID
-
-            const cardParams = {
-              memberIds: memberIds.join()
-            };
-
-            // Update the card to add yourself as a member
-            putCard(apiKey, apiToken, cardId, cardParams).then(function (response) {
-              console.log('Added yourself as a member to the card.');
-            });
-
-            return true; // Stop searching once the card is found
-          }
-        });
-
-        // If the card is not found in this list, continue searching in the next list
-        searchCardInLists(listIndex + 1);
-      });
-    }
-    )
-    // Start searching for the card in the first list
-    searchCardInLists(0);
+  if (newMemberIds.length === 0) {
+    core.setOutput("board members", members);
+    core.setOutput("assignees", assignees);
+    core.setFailed('No new members to add to card.');
+    return;
   }
-}
 
+  const cardParams = {
+    memberIds: existingMemberIds.concat(newMemberIds).join()
+  }
+
+  putCard(apiKey, apiToken, card.id, cardParams);
+
+  return true;
+}
 
 function getLabelsOfBoard(apiKey, apiToken, boardId) {
   return new Promise(function (resolve, reject) {
@@ -280,6 +252,20 @@ function getMembersOfBoard(apiKey, apiToken, boardId) {
         reject(error);
       })
   });
+}
+
+function getCardOfLists(apiKey, apiToken, listIds, issueNumber) {
+  listIds.forEach(async id => {
+    console.log("Seraching in list: " + id + " for issue: " + issueNumber);
+    const cards = await getCardsOfList(apiKey, apiToken, id);
+    cards.forEach(card => {
+      if (card.name.includes(`#${issueNumber}`)) {
+        return card;
+      }
+    });
+  });
+
+  core.setFailed('Card not found');
 }
 
 function getCardsOfList(apiKey, apiToken, listId) {

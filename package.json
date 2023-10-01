@@ -4,7 +4,7 @@
   "description": "Link Trello and Github Actions",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha"
   },
   "repository": {
     "type": "git",
@@ -22,5 +22,9 @@
     "@actions/github": "^2.1.1",
     "request": "^2.88.2",
     "request-promise-native": "^1.0.8"
+  },
+  "devDependencies": {
+    "mocha": "^10.2.0",
+    "sinon": "^16.0.0"
   }
 }
