@@ -106,7 +106,7 @@ function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
   const departureListId = process.env['TRELLO_IN_PROGRESS_LIST_ID'];
   const destinationListId = process.env['TRELLO_DEBUGING_LIST_ID'];
   const pullRequest = github.context.payload.pull_request;
-  const issue_numbers = pullRequest.body.match(/#[0-9]+/g);
+  const issue_numbers = pullRequest.body.match(/#[0-9]+/g) ?? [];
   const url = pullRequest.html_url;
   const reviewers = pullRequest.requested_reviewers.map(reviewer => reviewer.login);
 
@@ -159,10 +159,10 @@ function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
   const departureListId = process.env['TRELLO_DEBUGING_LIST_ID'];
   const destinationListId = process.env['TRELLO_DONE_LIST_ID'];
   const pullRequest = github.context.payload.pull_request;
-  const issue_numbers = pullRequest.body.match(/#[0-9]+/g);
+  const issue_numbers = pullRequest.body.match(/#[0-9]+/g) ?? [];
   const reviewers = pullRequest.requested_reviewers.map(reviewer => reviewer.login);
 
-  if (issue_numbers === null || issue_numbers.length === 0) {
+  if (issue_numbers.length === 0) {
     core.setOutput('No issue numbers found in pull request description.');
     return;
   }
