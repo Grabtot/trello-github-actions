@@ -188,7 +188,7 @@ function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
 // Function to add yourself as a member to an existing card when assigned on GitHub
 async function addMemberToCardWhenAssigned(apiKey, apiToken, boardId) {
   const issue = github.context.payload.issue;
-    console.setOutput("issue", issue);
+  core.setOutput("issue", issue);
   const issueNumber = issue.number;
   const assignees = issue.assignees.map(assignee => assignee.login);
 
