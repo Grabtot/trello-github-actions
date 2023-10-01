@@ -18,6 +18,9 @@ try {
     case 'move_card_when_pull_request_closed':
       moveCardWhenPullRequestClose(apiKey, apiToken, boardId);
       break;
+    case 'add_member_to_card_when_assigned':
+      addMemberToCardWhenAssigned(apiKey, apiToken, boardId);
+      break;
     // case 'move_card_when_issue_closed':
     //   moveCardWhenIssueClosed(apiKey, apiToken);
     //   break;
@@ -102,56 +105,34 @@ function moveCardWhenIssueClosed(apiKey, apiToken) {
   })
 }
 
-function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
+async function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
   const departureListId = process.env['TRELLO_IN_PROGRESS_LIST_ID'];
   const destinationListId = process.env['TRELLO_DEBUGING_LIST_ID'];
   const pullRequest = github.context.payload.pull_request;
-  const issue_numbers = pullRequest.body.match(/#[0-9]+/g) ?? [];
-  const url = pullRequest.html_url;
-  const reviewers = pullRequest.requested_reviewers.map(reviewer => reviewer.login);
+  const issueNumbers = pullRequest.body.match(/#[0-9]+/g) || [];
 
-  if (issue_numbers === null || issue_numbers.length === 0) {
+  if (issueNumbers.length === 0) {
     core.setOutput('No issue numbers found in pull request description.');
     return;
   }
 
-  getMembersOfBoard(apiKey, apiToken, boardId).then(function (response) {
-    const members = response;
-    const additionalMemberIds = [];
-    reviewers.forEach(function (reviewer) {
-      members.forEach(function (member) {
-        if (member.username.toLowerCase() == reviewer.toLowerCase()) {
-          additionalMemberIds.push(member.id);
-        }
-      });
-    });
+  const members = await getMembersOfBoard(apiKey, apiToken, boardId);
+  const reviewers = pullRequest.requested_reviewers.map(reviewer => reviewer.login);
+  const additionalMemberIds = members.filter(member => reviewers.includes(member.username.toLowerCase())).map(member => member.id);
 
-    getCardsOfList(apiKey, apiToken, departureListId).then(function (response) {
-      const cards = response;
-      let existingMemberIds = [];
-
-      issue_numbers.forEach(function (issue_number) {
-        cards.some(function (card) {
-          const card_issue_number = card.name.match(/#[0-9]+/)[0].slice(1);
-          if (card_issue_number == issue_number) {
-            const cardId = card.id;
-            existingMemberIds = card.idMembers;
-
-            const cardParams = {
-              destinationListId: destinationListId,
-              memberIds: existingMemberIds.concat(additionalMemberIds).join()
-            }
-
-            putCard(apiKey, apiToken, cardId, cardParams).then(function (response) {
-              addUrlSourceToCard(apiKey, apiToken, cardId, url);
-            });
-
-            return true;
-          }
-        });
-      });
-    });
-  });
+  const cards = await getCardsOfList(apiKey, apiToken, departureListId);
+  for (const issueNumber of issueNumbers) {
+    const card = cards.find(card => card.name.includes(`#${issueNumber}`));
+    if (card) {
+      const existingMemberIds = card.idMembers;
+      const cardParams = {
+        destinationListId: destinationListId,
+        memberIds: existingMemberIds.concat(additionalMemberIds).join()
+      }
+      await putCard(apiKey, apiToken, card.id, cardParams);
+      await addUrlSourceToCard(apiKey, apiToken, card.id, pullRequest.html_url);
+    }
+  }
 }
 
 
@@ -172,7 +153,7 @@ function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
     const additionalMemberIds = [];
     reviewers.forEach(function (reviewer) {
       members.forEach(function (member) {
-        if (member.username == reviewer) {
+        if (member.username.toLowerCase() == reviewer.toLowerCase()) {
           additionalMemberIds.push(member.id);
         }
       });
@@ -202,6 +183,78 @@ function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
       });
     });
   });
+}
+
+// Function to add yourself as a member to an existing card when assigned on GitHub
+function addMemberToCardWhenAssigned(apiKey, apiToken, boardId) {
+  const issue = github.context.payload.issue;
+  const assignees = issue.assignees.map(assignee => assignee.login);
+
+  // Define the Trello lists to search in order
+  const trelloListsToSearch = [
+    process.env['TRELLO_TODO_LIST_ID'],
+    process.env['TRELLO_IN_PROGRESS_LIST_ID'],
+    process.env['TRELLO_DEBUGING_LIST_ID']
+    // Add more lists as needed
+  ];
+
+  // Function to recursively search for the card in Trello lists
+  function searchCardInLists(listIndex) {
+    if (listIndex >= trelloListsToSearch.length) {
+      // Card not found in any list
+      core.setFailed('Card not found in any Trello list.');
+      return;
+    }
+
+    getMembersOfBoard(apiKey, apiToken, boardId).then(function (response) {
+      const members = response;
+      const additionalMemberIds = [];
+      reviewers.forEach(function (reviewer) {
+        members.forEach(function (member) {
+          if (member.username.toLowerCase() == reviewer.toLowerCase()) {
+            additionalMemberIds.push(member.id);
+          }
+        });
+      });
+
+      const listId = trelloListsToSearch[listIndex];
+
+      getCardsOfList(apiKey, apiToken, listId).then(function (response) {
+        const cards = response;
+        const issue_number = issue.number;
+
+        cards.some(function (card) {
+          const card_issue_number = card.name.match(/#[0-9]+/);
+          if (card_issue_number && card_issue_number[0].slice(1) == issue_number) {
+            const cardId = card.id;
+
+            // Get existing members of the card
+            const existingMemberIds = card.idMembers || [];
+
+            // Add your member ID to the existing members
+            const memberIds = existingMemberIds.concat([yourMemberId]); // Replace with your Trello member ID
+
+            const cardParams = {
+              memberIds: memberIds.join()
+            };
+
+            // Update the card to add yourself as a member
+            putCard(apiKey, apiToken, cardId, cardParams).then(function (response) {
+              console.log('Added yourself as a member to the card.');
+            });
+
+            return true; // Stop searching once the card is found
+          }
+        });
+
+        // If the card is not found in this list, continue searching in the next list
+        searchCardInLists(listIndex + 1);
+      });
+    }
+    )
+    // Start searching for the card in the first list
+    searchCardInLists(0);
+  }
 }
 
 
