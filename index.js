@@ -109,10 +109,11 @@ async function moveCardWhenPullRequestOpen(apiKey, apiToken, boardId) {
   const departureListId = process.env['TRELLO_IN_PROGRESS_LIST_ID'];
   const destinationListId = process.env['TRELLO_DEBUGING_LIST_ID'];
   const pullRequest = github.context.payload.pull_request;
+  console.log(pullRequest);
   const issueNumbers = pullRequest.body.match(/#[0-9]+/g) || [];
 
   if (issueNumbers.length === 0) {
-    core.setOutput('No issue numbers found in pull request description.');
+    console.log('No issue numbers found in pull request description.');
     return;
   }
 
@@ -144,7 +145,7 @@ function moveCardWhenPullRequestClose(apiKey, apiToken, boardId) {
   const reviewers = pullRequest.requested_reviewers.map(reviewer => reviewer.login);
 
   if (issue_numbers.length === 0) {
-    core.setOutput('No issue numbers found in pull request description.');
+    console.log('No issue numbers found in pull request description.');
     return;
   }
 
@@ -190,6 +191,7 @@ async function addMemberToCardWhenAssigned(apiKey, apiToken, boardId) {
   const issue = github.context.payload.issue;
   core.setOutput("issue", issue);
   const issueNumber = issue.number;
+  console.log(issue);
   const assignees = issue.assignees.map(assignee => assignee.login);
 
   // Define the Trello lists to search in order
@@ -255,18 +257,17 @@ function getMembersOfBoard(apiKey, apiToken, boardId) {
   });
 }
 
-function getCardOfLists(apiKey, apiToken, listIds, issueNumber) {
-  listIds.forEach(async id => {
+async function getCardOfLists(apiKey, apiToken, listIds, issueNumber) {
+  for (const id of listIds) {
     console.log("Seraching in list: " + id + " for issue: " + issueNumber);
     const cards = await getCardsOfList(apiKey, apiToken, id);
-    cards.forEach(card => {
-      if (card.name.includes(`#${issueNumber}`)) {
-        return card;
-      }
-    });
-  });
+    const card = cards.find(card => card.name.includes(`#${issueNumber}`));
+    if (card) {
+      return card; // Возвращаем найденную карту
+    }
+  }
 
-  core.setFailed('Card not found');
+  throw core.setFailed('Card not found'); // Если карта не была найдена, генерируем ошибку
 }
 
 function getCardsOfList(apiKey, apiToken, listId) {
